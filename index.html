@@ -8,7 +8,7 @@
     body {
       margin: 0;
       padding: 20px;
-      background: #eee;
+      background: #fff;
       font-family: sans-serif;
       display: flex;
       flex-direction: column;
@@ -33,7 +33,7 @@
       grid-template-columns: repeat(6, 50px);
       grid-template-rows: repeat(8, 50px);
       gap: 5px;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
 
     .cell {
@@ -57,7 +57,7 @@
     }
 
     .counter {
-      margin-bottom: 10px;
+      margin-bottom: 5px;
       font-size: 16px;
     }
 
@@ -65,12 +65,20 @@
       font-weight: bold;
     }
 
-    .counter .red {
-      color: red;
+    .counter .red,
+    #mismatchMessage .red {
+      color: #e05353;
     }
 
-    .counter .blue {
-      color: blue;
+    .counter .blue,
+    #mismatchMessage .blue {
+      color: #5988d1;
+    }
+
+    #mismatchMessage {
+      font-size: 16px;
+      margin-bottom: 10px;
+      display: none;
     }
 
     textarea {
@@ -94,6 +102,8 @@
 
   <div class="grid" id="grid"></div>
 
+  <div id="mismatchMessage"></div>
+
   <div class="counter" id="counter">
     <span class="red">Red: 0</span> | <span class="blue">Blue: 0</span>
   </div>
@@ -106,12 +116,12 @@
   <textarea id="output" readonly></textarea>
 
   <script>
-    const COLORS = ['white', 'red', 'blue', 'lightgray'];
+    const COLORS = ['white', '#e05353', '#5988d1', '#dadada'];
     const SYMBOLS = {
       'white': ' ',
-      'red': 'R',
-      'blue': 'B',
-      'lightgray': 'O'
+      '#e05353': 'R',
+      '#5988d1': 'B',
+      '#dadada': 'O'
     };
 
     const rows = 8;
@@ -146,43 +156,60 @@
     }
 
     function convertToText() {
-      const groupCount = document.getElementById('groupCount').value || "5";
-      const groupSize = document.getElementById('groupSize').value || "6";
-
-      const cells = document.querySelectorAll('.cell');
-      const output = [`"${groupCount}"`, `"${groupSize}"`];
-      let rowArray = [];
-
-      cells.forEach((cell, index) => {
-        const bg = cell.style.backgroundColor;
-        const mapped = SYMBOLS[bg] || ' ';
-        rowArray.push(`"${mapped}"`);
-
-        if ((index + 1) % cols === 0) {
-          output.push('    ' + rowArray.join(', '));
-          rowArray = [];
-        }
-      });
-
-      const formatted = `LVL01: [\n    ${output.join(',\n    ')}\n],`;
-      document.getElementById('output').value = formatted;
-    }
+		  const groupCount = document.getElementById('groupCount').value || "5";
+		  const groupSize = document.getElementById('groupSize').value || "6";
+		
+		  const cells = document.querySelectorAll('.cell');
+		  const output = [`"${groupCount}", "${groupSize}"`];
+		  let rowArray = [];
+		
+		  cells.forEach((cell, index) => {
+		    const colorIndex = parseInt(cell.dataset.colorIndex);
+		    const mapped = SYMBOLS[COLORS[colorIndex]] || ' ';
+		    rowArray.push(`"${mapped}"`);
+		
+		    if ((index + 1) % cols === 0) {
+		      output.push('    ' + rowArray.join(', '));
+		      rowArray = [];
+		    }
+		  });
+		
+		  const formatted = `LVL01: [\n    ${output.join(',\n    ')}\n],`;
+		  document.getElementById('output').value = formatted;
+		}
 
     function updateCounter() {
       const cells = document.querySelectorAll('.cell');
       let red = 0;
       let blue = 0;
       cells.forEach(cell => {
-        const color = cell.style.backgroundColor;
-        if (color === 'red') red++;
-        else if (color === 'blue') blue++;
+        const index = parseInt(cell.dataset.colorIndex);
+        if (COLORS[index] === '#e05353') red++;
+        else if (COLORS[index] === '#5988d1') blue++;
       });
 
       document.getElementById('counter').innerHTML = `
         <span class="red">Red: ${red}</span> | 
         <span class="blue">Blue: ${blue}</span>
       `;
+
+      const groupCount = parseInt(document.getElementById('groupCount').value) || 0;
+      const groupSize = parseInt(document.getElementById('groupSize').value) || 0;
+      const totalVotes = groupCount * groupSize;
+      const totalSelected = red + blue;
+
+      const mismatch = document.getElementById('mismatchMessage');
+      if (totalSelected !== totalVotes) {
+        mismatch.style.display = 'block';
+        mismatch.innerHTML = `(<span class="red">${red}</span> + <span class="blue">${blue}</span> !== ${totalVotes})`;
+      } else {
+        mismatch.style.display = 'none';
+      }
     }
+
+    // Listen for changes to inputs to recalculate mismatch line
+    document.getElementById('groupCount').addEventListener('input', updateCounter);
+    document.getElementById('groupSize').addEventListener('input', updateCounter);
 
     createGrid(rows, cols);
   </script>
