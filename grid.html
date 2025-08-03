@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Color Toggle Grid</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #eee;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .group-inputs {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .group-inputs input {
+      width: 40px;
+      padding: 4px;
+      font-size: 16px;
+      text-align: center;
+      margin: 0 4px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(8, 50px);
+      gap: 5px;
+      margin-bottom: 15px;
+    }
+
+    .cell {
+      width: 50px;
+      height: 50px;
+      background-color: white;
+      border: 1px solid #ccc;
+      transition: background-color 0.2s ease;
+      touch-action: manipulation;
+      border-radius: 50%;
+    }
+
+    .buttons {
+      margin-bottom: 10px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 8px 12px;
+      font-size: 16px;
+    }
+
+    .counter {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .counter span {
+      font-weight: bold;
+    }
+
+    .counter .red {
+      color: red;
+    }
+
+    .counter .blue {
+      color: blue;
+    }
+
+    textarea {
+      margin-top: 10px;
+      width: 90%;
+      max-width: 500px;
+      height: 220px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="group-inputs">
+    <label>
+      <input type="number" id="groupCount" value="5" min="1" /> groups of 
+      <input type="number" id="groupSize" value="6" min="1" />
+    </label>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="counter" id="counter">
+    <span class="red">Red: 0</span> | <span class="blue">Blue: 0</span>
+  </div>
+
+  <div class="buttons">
+    <button onclick="resetGrid()">Reset</button>
+    <button onclick="convertToText()">Convert to Text</button>
+  </div>
+
+  <textarea id="output" readonly></textarea>
+
+  <script>
+    const COLORS = ['white', 'red', 'blue', 'lightgray'];
+    const SYMBOLS = {
+      'white': ' ',
+      'red': 'R',
+      'blue': 'B',
+      'lightgray': 'O'
+    };
+
+    const rows = 8;
+    const cols = 6;
+
+    function createGrid(rows, cols) {
+      const grid = document.getElementById('grid');
+      for (let i = 0; i < rows * cols; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.colorIndex = 0;
+        cell.style.backgroundColor = COLORS[0];
+        cell.addEventListener('click', () => {
+          let index = parseInt(cell.dataset.colorIndex);
+          index = (index + 1) % COLORS.length;
+          cell.dataset.colorIndex = index;
+          cell.style.backgroundColor = COLORS[index];
+          updateCounter();
+        });
+        grid.appendChild(cell);
+      }
+    }
+
+    function resetGrid() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        cell.dataset.colorIndex = 0;
+        cell.style.backgroundColor = COLORS[0];
+      });
+      document.getElementById('output').value = '';
+      updateCounter();
+    }
+
+    function convertToText() {
+      const groupCount = document.getElementById('groupCount').value || "5";
+      const groupSize = document.getElementById('groupSize').value || "6";
+
+      const cells = document.querySelectorAll('.cell');
+      const output = [`"${groupCount}"`, `"${groupSize}"`];
+      let rowArray = [];
+
+      cells.forEach((cell, index) => {
+        const bg = cell.style.backgroundColor;
+        const mapped = SYMBOLS[bg] || ' ';
+        rowArray.push(`"${mapped}"`);
+
+        if ((index + 1) % cols === 0) {
+          output.push('    ' + rowArray.join(', '));
+          rowArray = [];
+        }
+      });
+
+      const formatted = `LVL01: [\n    ${output.join(',\n    ')}\n],`;
+      document.getElementById('output').value = formatted;
+    }
+
+    function updateCounter() {
+      const cells = document.querySelectorAll('.cell');
+      let red = 0;
+      let blue = 0;
+      cells.forEach(cell => {
+        const color = cell.style.backgroundColor;
+        if (color === 'red') red++;
+        else if (color === 'blue') blue++;
+      });
+
+      document.getElementById('counter').innerHTML = `
+        <span class="red">Red: ${red}</span> | 
+        <span class="blue">Blue: ${blue}</span>
+      `;
+    }
+
+    createGrid(rows, cols);
+  </script>
+</body>
+</html>
