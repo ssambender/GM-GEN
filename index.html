@@ -93,125 +93,287 @@
 </head>
 <body>
 
-  <div class="group-inputs">
-    <label>
-      <input type="number" id="groupCount" value="5" min="1" /> groups of 
-      <input type="number" id="groupSize" value="6" min="1" />
-    </label>
-  </div>
+<div class="group-inputs">
+  <label>
+    <input type="number" id="groupCount" value="5" min="1" /> groups of
+    <input type="number" id="groupSize" value="6" min="1" />
+  </label>
+</div>
 
-  <div class="grid" id="grid"></div>
+<div class="grid" id="grid"></div>
 
-  <div id="mismatchMessage"></div>
+<div id="mismatchMessage"></div>
 
-  <div class="counter" id="counter">
-    <span class="red">Red: 0</span> | <span class="blue">Blue: 0</span>
-  </div>
+<div class="counter" id="counter">
+  <span class="red">Red: 0</span> | <span class="blue">Blue: 0</span>
+</div>
 
-  <div class="buttons">
-    <button onclick="resetGrid()">Reset</button>
-    <button onclick="convertToText()">Convert to Text</button>
-  </div>
+<div class="buttons">
+  <button onclick="resetGrid()">Reset</button>
+  <button onclick="convertToText()">Convert to Text</button>
+  <button onclick="generateRandom()">Generate Random</button>
+</div>
 
-  <textarea id="output" readonly></textarea>
+<textarea id="output" readonly></textarea>
 
-  <script>
-    const COLORS = ['white', '#e05353', '#5988d1', '#dadada'];
-    const SYMBOLS = {
-      'white': ' ',
-      '#e05353': 'R',
-      '#5988d1': 'B',
-      '#dadada': 'O'
-    };
+<script>
+  const COLORS = ['white', '#e05353', '#5988d1', '#dadada'];
+  const SYMBOLS = {
+    'white': ' ',
+    '#e05353': 'R',
+    '#5988d1': 'B',
+    '#dadada': 'O'
+  };
 
-    const rows = 8;
-    const cols = 6;
+  const rows = 8;
+  const cols = 6;
 
-    function createGrid(rows, cols) {
-      const grid = document.getElementById('grid');
-      for (let i = 0; i < rows * cols; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.colorIndex = 0;
-        cell.style.backgroundColor = COLORS[0];
-        cell.addEventListener('click', () => {
-          let index = parseInt(cell.dataset.colorIndex);
-          index = (index + 1) % COLORS.length;
-          cell.dataset.colorIndex = index;
-          cell.style.backgroundColor = COLORS[index];
-          updateCounter();
-        });
-        grid.appendChild(cell);
+  function createGrid(rows, cols) {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    for (let i = 0; i < rows * cols; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.colorIndex = 0;
+      cell.style.backgroundColor = COLORS[0];
+      cell.addEventListener('click', () => {
+        let index = parseInt(cell.dataset.colorIndex);
+        index = (index + 1) % COLORS.length;
+        cell.dataset.colorIndex = index;
+        cell.style.backgroundColor = COLORS[index];
+        updateCounter();
+      });
+      grid.appendChild(cell);
+    }
+  }
+
+  function resetGrid() {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+      cell.dataset.colorIndex = 0;
+      cell.style.backgroundColor = COLORS[0];
+    });
+    document.getElementById('output').value = '';
+    updateCounter();
+  }
+
+  function convertToText() {
+    const groupCount = document.getElementById('groupCount').value || "5";
+    const groupSize = document.getElementById('groupSize').value || "6";
+    const cells = document.querySelectorAll('.cell');
+    const output = [`"${groupCount}", "${groupSize}"`];
+    let rowArray = [];
+
+    cells.forEach((cell, index) => {
+      const colorIndex = parseInt(cell.dataset.colorIndex);
+      const mapped = SYMBOLS[COLORS[colorIndex]] || ' ';
+      rowArray.push(`"${mapped}"`);
+
+      if ((index + 1) % cols === 0) {
+        output.push('    ' + rowArray.join(', '));
+        rowArray = [];
       }
-    }
+    });
 
-    function resetGrid() {
-      const cells = document.querySelectorAll('.cell');
-      cells.forEach(cell => {
-        cell.dataset.colorIndex = 0;
-        cell.style.backgroundColor = COLORS[0];
-      });
-      document.getElementById('output').value = '';
-      updateCounter();
-    }
+    const formatted = `LVL01: [${output.join(',\n    ')}\n],`;
+    document.getElementById('output').value = formatted;
+  }
 
-    function convertToText() {
-		  const groupCount = document.getElementById('groupCount').value || "5";
-		  const groupSize = document.getElementById('groupSize').value || "6";
-		
-		  const cells = document.querySelectorAll('.cell');
-		  const output = [`"${groupCount}", "${groupSize}"`];
-		  let rowArray = [];
-		
-		  cells.forEach((cell, index) => {
-		    const colorIndex = parseInt(cell.dataset.colorIndex);
-		    const mapped = SYMBOLS[COLORS[colorIndex]] || ' ';
-		    rowArray.push(`"${mapped}"`);
-		
-		    if ((index + 1) % cols === 0) {
-		      output.push('    ' + rowArray.join(', '));
-		      rowArray = [];
-		    }
-		  });
-		
-		  const formatted = `LVL01: [${output.join(',\n    ')}\n],`;
-		  document.getElementById('output').value = formatted;
-		}
+  function updateCounter() {
+    const cells = document.querySelectorAll('.cell');
+    let red = 0;
+    let blue = 0;
+    cells.forEach(cell => {
+      const index = parseInt(cell.dataset.colorIndex);
+      if (COLORS[index] === '#e05353') red++;
+      else if (COLORS[index] === '#5988d1') blue++;
+    });
 
-    function updateCounter() {
-      const cells = document.querySelectorAll('.cell');
-      let red = 0;
-      let blue = 0;
-      cells.forEach(cell => {
-        const index = parseInt(cell.dataset.colorIndex);
-        if (COLORS[index] === '#e05353') red++;
-        else if (COLORS[index] === '#5988d1') blue++;
-      });
-
-      document.getElementById('counter').innerHTML = `
-        <span class="red">Red: ${red}</span> | 
+    document.getElementById('counter').innerHTML = `
+        <span class="red">Red: ${red}</span> |
         <span class="blue">Blue: ${blue}</span>
       `;
 
-      const groupCount = parseInt(document.getElementById('groupCount').value) || 0;
-      const groupSize = parseInt(document.getElementById('groupSize').value) || 0;
-      const totalVotes = groupCount * groupSize;
-      const totalSelected = red + blue;
+    const groupCount = parseInt(document.getElementById('groupCount').value) || 0;
+    const groupSize = parseInt(document.getElementById('groupSize').value) || 0;
+    const totalVotes = groupCount * groupSize;
+    const totalSelected = red + blue;
 
-      const mismatch = document.getElementById('mismatchMessage');
-      if (totalSelected !== totalVotes) {
-        mismatch.style.display = 'block';
-        mismatch.innerHTML = `(<span class="red">${red}</span> + <span class="blue">${blue}</span> !== ${totalVotes})`;
-      } else {
-        mismatch.style.display = 'none';
-      }
+    const mismatch = document.getElementById('mismatchMessage');
+    if (totalSelected !== totalVotes) {
+      mismatch.style.display = 'block';
+      mismatch.innerHTML = `(<span class="red">${red}</span> + <span class="blue">${blue}</span> !== ${totalVotes})`;
+    } else {
+      mismatch.style.display = 'none';
+    }
+  }
+
+  function generateRandom() {
+    const possibleCombos = [
+      [5, 6],
+      [6, 5],
+      [7, 3],
+      [4, 7],
+      [3, 8],
+      [6, 4],
+      [5, 5]
+    ];
+    const [groupCount, groupSize] = possibleCombos[Math.floor(Math.random() * possibleCombos.length)];
+
+    document.getElementById('groupCount').value = groupCount;
+    document.getElementById('groupSize').value = groupSize;
+
+    const level = generateWinnableLevel(groupCount, groupSize);
+    const cells = document.querySelectorAll('.cell');
+
+    for (let i = 0; i < level.length - 2; i++) {
+      const char = level[i + 2];
+      let colorIndex = 0;
+      if (char === 'R') colorIndex = 1;
+      else if (char === 'B') colorIndex = 2;
+      else if (char === 'O') colorIndex = 3;
+
+      const cell = cells[i];
+      cell.dataset.colorIndex = colorIndex;
+      cell.style.backgroundColor = COLORS[colorIndex];
     }
 
-    // Listen for changes to inputs to recalculate mismatch line
-    document.getElementById('groupCount').addEventListener('input', updateCounter);
-    document.getElementById('groupSize').addEventListener('input', updateCounter);
+    updateCounter();
+  }
 
-    createGrid(rows, cols);
-  </script>
+  function generateWinnableLevel(districtCount = 5, voteCount = 3) {
+    const rows = 8;
+    const cols = 6;
+
+    while (true) {
+      const grid = Array.from({ length: rows }, () => Array(cols).fill(" "));
+      const used = Array.from({ length: rows }, () => Array(cols).fill(false));
+      const districts = [];
+
+      function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+      }
+
+      function getNeighbors(r, c) {
+        return [
+          [r - 1, c], [r + 1, c],
+          [r, c - 1], [r, c + 1]
+        ].filter(([nr, nc]) =>
+                nr >= 0 && nr < rows &&
+                nc >= 0 && nc < cols &&
+                !used[nr][nc]
+        );
+      }
+
+      function placeDistrict() {
+        let attempts = 0;
+        while (attempts++ < 3000) {
+          const startR = Math.floor(Math.random() * rows);
+          const startC = Math.floor(Math.random() * cols);
+          if (used[startR][startC]) continue;
+
+          const queue = [[[startR, startC]]];
+          while (queue.length > 0) {
+            const path = queue.shift();
+            if (path.length >= voteCount) {
+              const finalPath = path.slice(0, voteCount);
+              for (const [r, c] of finalPath) used[r][c] = true;
+
+              const oTiles = [];
+              for (let i = voteCount; i < Math.min(path.length, voteCount + 2); i++) {
+                const [r, c] = path[i];
+                if (!used[r][c]) {
+                  used[r][c] = true;
+                  oTiles.push([r, c]);
+                }
+              }
+
+              districts.push({
+                path: finalPath,
+                oTiles,
+                votes: []
+              });
+
+              return true;
+            }
+
+            const [lastR, lastC] = path[path.length - 1];
+            const neighbors = getNeighbors(lastR, lastC).filter(([nr, nc]) =>
+                    !path.some(([pr, pc]) => pr === nr && pc === nc)
+            );
+            shuffle(neighbors);
+            for (const neighbor of neighbors) {
+              queue.push([...path, neighbor]);
+            }
+          }
+        }
+        return false;
+      }
+
+      let success = true;
+      for (let i = 0; i < districtCount; i++) {
+        if (!placeDistrict()) {
+          success = false;
+          break;
+        }
+      }
+      if (!success) continue;
+
+      let redWins = 0, blueWins = 0;
+      let totalRedTiles = 0, totalBlueTiles = 0;
+
+      for (const dist of districts) {
+        const votes = [];
+        let r = 0, b = 0;
+
+        for (let i = 0; i < dist.path.length; i++) {
+          let vote = i === 0 ? 'R' : i === 1 ? 'B' : Math.random() < 0.45 ? 'R' : 'B';
+          vote === 'R' ? r++ : b++;
+          votes.push(vote);
+        }
+
+        dist.votes = votes;
+        totalRedTiles += r;
+        totalBlueTiles += b;
+
+        if (r > b) redWins++;
+        else if (b > r) blueWins++;
+      }
+
+      if (redWins <= blueWins || totalRedTiles >= totalBlueTiles) continue;
+
+      for (const dist of districts) {
+        dist.path.forEach(([r, c], i) => {
+          grid[r][c] = dist.votes[i];
+        });
+        dist.oTiles.forEach(([r, c]) => {
+          grid[r][c] = "O";
+        });
+      }
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c] === " ") {
+            grid[r][c] = Math.random() < 0.3 ? "O" : " ";
+          }
+        }
+      }
+
+      return [
+        districtCount.toString(),
+        voteCount.toString(),
+        ...grid.flat()
+      ];
+    }
+  }
+
+  createGrid(rows, cols);
+  updateCounter();
+  document.getElementById('groupCount').addEventListener('input', updateCounter);
+  document.getElementById('groupSize').addEventListener('input', updateCounter);
+</script>
 </body>
 </html>
