@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Color Toggle Grid</title>
+  <title>Gerrymandle Generator</title>
   <style>
     body {
       margin: 0;
@@ -14,20 +14,16 @@
       flex-direction: column;
       align-items: center;
     }
-
-    .group-inputs {
+    .group-inputs, .seed-input {
       font-size: 18px;
       margin-bottom: 10px;
     }
-
-    .group-inputs input {
-      width: 40px;
+    input {
       padding: 4px;
       font-size: 16px;
       text-align: center;
       margin: 0 4px;
     }
-
     .grid {
       display: grid;
       grid-template-columns: repeat(6, 50px);
@@ -35,7 +31,6 @@
       gap: 5px;
       margin-bottom: 10px;
     }
-
     .cell {
       width: 50px;
       height: 50px;
@@ -45,42 +40,34 @@
       touch-action: manipulation;
       border-radius: 50%;
     }
-
     .buttons {
       margin-bottom: 10px;
     }
-
     button {
       margin: 5px;
       padding: 8px 12px;
       font-size: 16px;
     }
-
     .counter {
       margin-bottom: 5px;
       font-size: 16px;
     }
-
     .counter span {
       font-weight: bold;
     }
-
     .counter .red,
     #mismatchMessage .red {
       color: #e05353;
     }
-
     .counter .blue,
     #mismatchMessage .blue {
       color: #5988d1;
     }
-
     #mismatchMessage {
       font-size: 16px;
       margin-bottom: 10px;
       display: none;
     }
-
     textarea {
       margin-top: 10px;
       width: 90%;
@@ -92,43 +79,32 @@
   </style>
 </head>
 <body>
-
 <div class="group-inputs">
   <label>
     <input type="number" id="groupCount" value="5" min="1" /> groups of
     <input type="number" id="groupSize" value="6" min="1" />
   </label>
 </div>
-
+<div class="seed-input">
+  <label>Seed: <input type="text" id="seedInput" value="080525" /></label>
+  <button onclick="generateFromSeed()">Generate from Seed</button>
+</div>
 <div class="grid" id="grid"></div>
-
 <div id="mismatchMessage"></div>
-
 <div class="counter" id="counter">
   <span class="red">Red: 0</span> | <span class="blue">Blue: 0</span>
 </div>
-
 <div class="buttons">
   <button onclick="resetGrid()">Reset</button>
   <button onclick="convertToText()">Convert to Text</button>
-  <button onclick="generateRandom()">Generate Random</button>
 </div>
-
 <textarea id="output" readonly></textarea>
-
 <script>
   const COLORS = ['white', '#e05353', '#5988d1', '#dadada'];
-  const SYMBOLS = {
-    'white': ' ',
-    '#e05353': 'R',
-    '#5988d1': 'B',
-    '#dadada': 'O'
-  };
+  const SYMBOLS = {'white': ' ', '#e05353': 'R', '#5988d1': 'B', '#dadada': 'O'};
+  const rows = 8, cols = 6;
 
-  const rows = 8;
-  const cols = 6;
-
-  function createGrid(rows, cols) {
+  function createGrid() {
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
     for (let i = 0; i < rows * cols; i++) {
@@ -148,8 +124,7 @@
   }
 
   function resetGrid() {
-    const cells = document.querySelectorAll('.cell');
-    cells.forEach(cell => {
+    document.querySelectorAll('.cell').forEach(cell => {
       cell.dataset.colorIndex = 0;
       cell.style.backgroundColor = COLORS[0];
     });
@@ -158,219 +133,168 @@
   }
 
   function convertToText() {
-    const groupCount = document.getElementById('groupCount').value || "5";
-    const groupSize = document.getElementById('groupSize').value || "6";
+    const groupCount = document.getElementById('groupCount').value;
+    const groupSize = document.getElementById('groupSize').value;
     const cells = document.querySelectorAll('.cell');
     const output = [`"${groupCount}", "${groupSize}"`];
     let rowArray = [];
-
     cells.forEach((cell, index) => {
-      const colorIndex = parseInt(cell.dataset.colorIndex);
-      const mapped = SYMBOLS[COLORS[colorIndex]] || ' ';
+      const mapped = SYMBOLS[COLORS[parseInt(cell.dataset.colorIndex)]];
       rowArray.push(`"${mapped}"`);
-
       if ((index + 1) % cols === 0) {
         output.push('    ' + rowArray.join(', '));
         rowArray = [];
       }
     });
-
-    const formatted = `LVL01: [${output.join(',\n    ')}\n],`;
-    document.getElementById('output').value = formatted;
+    document.getElementById('output').value = `LVL01: [${output.join(',\n    ')}\n],`;
   }
 
   function updateCounter() {
     const cells = document.querySelectorAll('.cell');
-    let red = 0;
-    let blue = 0;
+    let red = 0, blue = 0;
     cells.forEach(cell => {
-      const index = parseInt(cell.dataset.colorIndex);
-      if (COLORS[index] === '#e05353') red++;
-      else if (COLORS[index] === '#5988d1') blue++;
+      const color = COLORS[parseInt(cell.dataset.colorIndex)];
+      if (color === '#e05353') red++;
+      else if (color === '#5988d1') blue++;
     });
-
-    document.getElementById('counter').innerHTML = `
-        <span class="red">Red: ${red}</span> |
-        <span class="blue">Blue: ${blue}</span>
-      `;
-
+    document.getElementById('counter').innerHTML = `<span class="red">Red: ${red}</span> | <span class="blue">Blue: ${blue}</span>`;
     const groupCount = parseInt(document.getElementById('groupCount').value) || 0;
     const groupSize = parseInt(document.getElementById('groupSize').value) || 0;
     const totalVotes = groupCount * groupSize;
     const totalSelected = red + blue;
-
     const mismatch = document.getElementById('mismatchMessage');
     if (totalSelected !== totalVotes) {
       mismatch.style.display = 'block';
       mismatch.innerHTML = `(<span class="red">${red}</span> + <span class="blue">${blue}</span> !== ${totalVotes})`;
-    } else {
-      mismatch.style.display = 'none';
+    } else mismatch.style.display = 'none';
+  }
+
+  function sha256(text) {
+    const utf8 = new TextEncoder().encode(text);
+    return crypto.subtle.digest('SHA-256', utf8).then(buf => {
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    });
+  }
+
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
     }
   }
 
-  function generateRandom() {
-    const possibleCombos = [
-      [5, 6],
-      [6, 5],
-      [7, 3],
-      [4, 7],
-      [3, 8],
-      [6, 4],
-      [5, 5]
-    ];
-    const [groupCount, groupSize] = possibleCombos[Math.floor(Math.random() * possibleCombos.length)];
-
+  async function generateFromSeed() {
+    const seedText = document.getElementById('seedInput').value.trim();
+    if (!seedText) return alert('Enter a seed.');
+    const hash = await sha256(seedText);
+    const seed = parseInt(hash.slice(0, 8), 16);
+    const rand = mulberry32(seed);
+    const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5] ];
+    const [groupCount, groupSize] = combos[Math.floor(rand() * combos.length)];
     document.getElementById('groupCount').value = groupCount;
     document.getElementById('groupSize').value = groupSize;
-
-    const level = generateWinnableLevel(groupCount, groupSize);
+    const level = generateWinnableLevel(groupCount, groupSize, rand);
     const cells = document.querySelectorAll('.cell');
-
     for (let i = 0; i < level.length - 2; i++) {
       const char = level[i + 2];
       let colorIndex = 0;
       if (char === 'R') colorIndex = 1;
       else if (char === 'B') colorIndex = 2;
       else if (char === 'O') colorIndex = 3;
-
       const cell = cells[i];
       cell.dataset.colorIndex = colorIndex;
       cell.style.backgroundColor = COLORS[colorIndex];
     }
-
     updateCounter();
   }
 
-  function generateWinnableLevel(districtCount = 5, voteCount = 3) {
-    const rows = 8;
-    const cols = 6;
+  function generateWinnableLevel(districtCount, voteCount, rand) {
+    const grid = Array.from({ length: rows }, () => Array(cols).fill(" "));
+    const used = Array.from({ length: rows }, () => Array(cols).fill(false));
+    const districts = [];
 
-    while (true) {
-      const grid = Array.from({ length: rows }, () => Array(cols).fill(" "));
-      const used = Array.from({ length: rows }, () => Array(cols).fill(false));
-      const districts = [];
-
-      function shuffle(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [array[i], array[j]] = [array[j], array[i]];
-        }
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
       }
-
-      function getNeighbors(r, c) {
-        return [
-          [r - 1, c], [r + 1, c],
-          [r, c - 1], [r, c + 1]
-        ].filter(([nr, nc]) =>
-                nr >= 0 && nr < rows &&
-                nc >= 0 && nc < cols &&
-                !used[nr][nc]
-        );
-      }
-
-      function placeDistrict() {
-        let attempts = 0;
-        while (attempts++ < 3000) {
-          const startR = Math.floor(Math.random() * rows);
-          const startC = Math.floor(Math.random() * cols);
-          if (used[startR][startC]) continue;
-
-          const queue = [[[startR, startC]]];
-          while (queue.length > 0) {
-            const path = queue.shift();
-            if (path.length >= voteCount) {
-              const finalPath = path.slice(0, voteCount);
-              for (const [r, c] of finalPath) used[r][c] = true;
-
-              const oTiles = [];
-              for (let i = voteCount; i < Math.min(path.length, voteCount + 2); i++) {
-                const [r, c] = path[i];
-                if (!used[r][c]) {
-                  used[r][c] = true;
-                  oTiles.push([r, c]);
-                }
-              }
-
-              districts.push({
-                path: finalPath,
-                oTiles,
-                votes: []
-              });
-
-              return true;
-            }
-
-            const [lastR, lastC] = path[path.length - 1];
-            const neighbors = getNeighbors(lastR, lastC).filter(([nr, nc]) =>
-                    !path.some(([pr, pc]) => pr === nr && pc === nc)
-            );
-            shuffle(neighbors);
-            for (const neighbor of neighbors) {
-              queue.push([...path, neighbor]);
-            }
-          }
-        }
-        return false;
-      }
-
-      let success = true;
-      for (let i = 0; i < districtCount; i++) {
-        if (!placeDistrict()) {
-          success = false;
-          break;
-        }
-      }
-      if (!success) continue;
-
-      let redWins = 0, blueWins = 0;
-      let totalRedTiles = 0, totalBlueTiles = 0;
-
-      for (const dist of districts) {
-        const votes = [];
-        let r = 0, b = 0;
-
-        for (let i = 0; i < dist.path.length; i++) {
-          let vote = i === 0 ? 'R' : i === 1 ? 'B' : Math.random() < 0.45 ? 'R' : 'B';
-          vote === 'R' ? r++ : b++;
-          votes.push(vote);
-        }
-
-        dist.votes = votes;
-        totalRedTiles += r;
-        totalBlueTiles += b;
-
-        if (r > b) redWins++;
-        else if (b > r) blueWins++;
-      }
-
-      if (redWins <= blueWins || totalRedTiles >= totalBlueTiles) continue;
-
-      for (const dist of districts) {
-        dist.path.forEach(([r, c], i) => {
-          grid[r][c] = dist.votes[i];
-        });
-        dist.oTiles.forEach(([r, c]) => {
-          grid[r][c] = "O";
-        });
-      }
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (grid[r][c] === " ") {
-            grid[r][c] = Math.random() < 0.3 ? "O" : " ";
-          }
-        }
-      }
-
-      return [
-        districtCount.toString(),
-        voteCount.toString(),
-        ...grid.flat()
-      ];
     }
+
+    function getNeighbors(r, c) {
+      return [[r-1,c], [r+1,c], [r,c-1], [r,c+1]].filter(([nr,nc]) => nr>=0 && nr<rows && nc>=0 && nc<cols && !used[nr][nc]);
+    }
+
+    function placeDistrict() {
+      let attempts = 0;
+      while (attempts++ < 3000) {
+        const startR = Math.floor(rand() * rows);
+        const startC = Math.floor(rand() * cols);
+        if (used[startR][startC]) continue;
+        const queue = [[[startR, startC]]];
+        while (queue.length) {
+          const path = queue.shift();
+          if (path.length >= voteCount) {
+            const finalPath = path.slice(0, voteCount);
+            finalPath.forEach(([r,c]) => used[r][c] = true);
+            const oTiles = [];
+            for (let i = voteCount; i < Math.min(path.length, voteCount + 2); i++) {
+              const [r,c] = path[i];
+              if (!used[r][c]) {
+                used[r][c] = true;
+                oTiles.push([r,c]);
+              }
+            }
+            districts.push({ path: finalPath, oTiles, votes: [] });
+            return true;
+          }
+          const [lr,lc] = path[path.length - 1];
+          const neighbors = getNeighbors(lr,lc).filter(([nr,nc]) => !path.some(([pr,pc]) => pr===nr && pc===nc));
+          shuffle(neighbors);
+          neighbors.forEach(n => queue.push([...path, n]));
+        }
+      }
+      return false;
+    }
+
+    for (let i = 0; i < districtCount; i++) {
+      if (!placeDistrict()) return generateWinnableLevel(districtCount, voteCount, rand);
+    }
+
+    let redWins = 0, blueWins = 0, redTiles = 0, blueTiles = 0;
+    for (const dist of districts) {
+      const votes = [];
+      let r = 0, b = 0;
+      for (let i = 0; i < dist.path.length; i++) {
+        let vote = i === 0 ? 'R' : i === 1 ? 'B' : (rand() < 0.45 ? 'R' : 'B');
+        vote === 'R' ? r++ : b++;
+        votes.push(vote);
+      }
+      dist.votes = votes;
+      redTiles += r;
+      blueTiles += b;
+      if (r > b) redWins++;
+      else if (b > r) blueWins++;
+    }
+
+    if (redWins <= blueWins || redTiles >= blueTiles) return generateWinnableLevel(districtCount, voteCount, rand);
+
+    for (const dist of districts) {
+      dist.path.forEach(([r, c], i) => grid[r][c] = dist.votes[i]);
+      dist.oTiles.forEach(([r, c]) => grid[r][c] = 'O');
+    }
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (grid[r][c] === ' ') grid[r][c] = rand() < 0.3 ? 'O' : ' ';
+      }
+    }
+
+    return [districtCount.toString(), voteCount.toString(), ...grid.flat()];
   }
 
-  createGrid(rows, cols);
+  createGrid();
   updateCounter();
   document.getElementById('groupCount').addEventListener('input', updateCounter);
   document.getElementById('groupSize').addEventListener('input', updateCounter);
