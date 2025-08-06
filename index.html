@@ -3,29 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gerrymandle Generator</title>
+  <title>Gerrymandle Map Editor</title>
   <link rel="icon" href="https://raw.githubusercontent.com/ssambender/GM-GEN/refs/heads/main/G-Edit-Logo.png">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/ssambender/GM-GEN/refs/heads/main/G-Edit-Logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zain:ital,wght@0,200;0,300;0,400;0,700;0,800;0,900;1,300;1,400&display=swap" rel="stylesheet">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Zain:ital,wght@0,200;0,300;0,400;0,700;0,800;0,900;1,300;1,400&display=swap');
+
     body {
       margin: 0;
-      padding: 20px;
       background: #fff;
-      font-family: sans-serif;
+      font-size: 1em;
+      font-family: 'Zain', 'Clear Sans', 'Helvetica Neue', 'Franklin Gothic Demi Cond', 'Bahnschrift', Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
+      color: #333333;
     }
+
+    #heading {
+      border-bottom: solid 1px #e8e8e8;
+      width: 100%;
+      text-align: center;
+      padding: 14px 0 4px 0;
+      margin-bottom: 16px;
+      font-size: 2em;
+      text-transform: uppercase;
+    }
+
     .group-inputs, .seed-input {
       font-size: 18px;
       margin-bottom: 10px;
     }
     input {
-      padding: 4px;
-      font-size: 16px;
+      padding: 0;
+      font-size: 1em;
       text-align: center;
       margin: 0 4px;
+      font-family: 'Zain', 'Clear Sans', 'Helvetica Neue', 'Franklin Gothic Demi Cond', 'Bahnschrift', Arial, sans-serif;
+      color: #333333;
+
+      width: 2em;
     }
+    #seedInput {
+      width: 5em;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(6, 50px);
@@ -47,12 +72,20 @@
     }
     button {
       margin: 5px;
-      padding: 8px 12px;
-      font-size: 16px;
+      padding: 4px 12px;
+      font-size: 1.2em;
+      font-family: 'Zain', 'Clear Sans', 'Helvetica Neue', 'Franklin Gothic Demi Cond', 'Bahnschrift', Arial, sans-serif;
+      color: #333333;
+      border: none;
+      cursor: pointer;
+      transition: .15s;
+    }
+    button:hover {
+      background-color: #d0d5d9;
     }
     .counter {
       margin-bottom: 5px;
-      font-size: 16px;
+      font-size: 1.2em;
     }
     .counter span {
       font-weight: bold;
@@ -66,9 +99,9 @@
       color: #5988d1;
     }
     #mismatchMessage {
-      font-size: 16px;
-      margin-bottom: 10px;
+      font-size: 1.2em;
       display: none;
+      font-weight: bold;
     }
     textarea {
       margin-top: 10px;
@@ -78,17 +111,37 @@
       font-family: monospace;
       font-size: 14px;
     }
+    label {
+      font-size: 1.25em;
+    }
+    a {
+      color: #55698c;
+    }
+    a:hover {
+      color: #2a87ff;
+    }
   </style>
 </head>
 <body>
+<div id="heading">
+  ✰✰✰ Gerrymandle Map Editor ✰✰✰
+</div>
+
+<div style="margin-bottom: 16px; text-align: center; line-height: 1; font-size: 1.1em; padding: 16px 0">
+  This editor can be used to create, edit, and share maps for <a href="https://ssambender.github.io/gerrymandle/">Gerrymandle</a>.<br>
+  Create a map either manually, by clicking a tile to toggle through <span style="color: #e05353;">RED</span>/<span style="color: #5988d1;">BLUE</span>/<span style="color:gray;">GRAY</span>/OFF.<br>
+  Or, enter a random generation seed to procedurally attempt to create a unique and solvable level.
+</div>
+
 <div class="group-inputs">
   <label>
-    <input type="number" id="groupCount" value="5" min="1" /> groups of
-    <input type="number" id="groupSize" value="6" min="1" />
+    <input type="number" id="groupCount" value="5" min="1" max="24" /> groups of
+    <input type="number" id="groupSize" value="6" min="1" max="24" />
   </label>
 </div>
 <div class="seed-input">
   <label>Seed: <input type="text" id="seedInput" value="080525" /></label>
+  <!--                                        starting seed value  -->
   <button onclick="generateFromSeed()">Generate from Seed</button>
 </div>
 <div class="grid" id="grid"></div>
@@ -99,12 +152,17 @@
 <div class="buttons">
   <button onclick="resetGrid()">Reset</button>
   <button onclick="convertToText()">Convert to Text</button>
+  <button onclick="copyLevelURL()">Copy Direct URL</button>
+  <button onclick="goToURL()">TRY OUT (new tab)</button>
 </div>
-<textarea id="output" readonly></textarea>
+
+<div id="copyMessage" style="height: 24px; font-size: 1em; font-weight: bold; color: #55698c;"></div>
+
 <script>
   const COLORS = ['white', '#e05353', '#5988d1', '#dadada'];
   const SYMBOLS = {'white': ' ', '#e05353': 'R', '#5988d1': 'B', '#dadada': 'O'};
   const rows = 8, cols = 6;
+  let copyMessageTimeout = null;
 
   function createGrid() {
     const grid = document.getElementById('grid');
@@ -130,7 +188,6 @@
       cell.dataset.colorIndex = 0;
       cell.style.backgroundColor = COLORS[0];
     });
-    document.getElementById('output').value = '';
     updateCounter();
   }
 
@@ -139,21 +196,27 @@
     const groupSize = document.getElementById('groupSize').value;
     const cells = document.querySelectorAll('.cell');
 
-    let outputLines = [`LVL00: ["${groupCount}", "${groupSize}",`];
+    const seed = document.getElementById('seedInput').value.trim();
+    const levelLabel = seed ? `'${seed}':` : 'LVL00:';
+
+    let outputLines = [`${levelLabel} ["${groupCount}", "${groupSize}",`];
 
     let rowArray = [];
     cells.forEach((cell, index) => {
       const mapped = SYMBOLS[COLORS[parseInt(cell.dataset.colorIndex)]];
       rowArray.push(`"${mapped}"`);
       if ((index + 1) % cols === 0) {
-        outputLines.push('    ' + rowArray.join(', '));
+        outputLines.push('    ' + rowArray.join(', ') + ',');
         rowArray = [];
       }
     });
 
     outputLines.push('],');
+    const finalText = outputLines.join('\n');
 
-    document.getElementById('output').value = outputLines.join('\n');
+    navigator.clipboard.writeText(finalText)
+            .then(() => showCopyMessage("Level text successfully copied"))
+            .catch(err => alert("Failed to copy level text: " + err));
   }
 
   function updateCounter() {
@@ -203,7 +266,7 @@
 
   async function generateFromSeed() {
     const baseSeed = document.getElementById('seedInput').value.trim();
-    if (!baseSeed) return alert('Enter a seed.');
+    if (!baseSeed) return alert('Enter text in seed input field.');
 
     //const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5], [5,5], [5,3], [5,3], [5,3], [5,4] ];
     const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5], [5,3], [5,4] ];
@@ -347,6 +410,55 @@
     }
 
     return [districtCount.toString(), voteCount.toString(), ...grid.flat()];
+  }
+
+  function copyLevelURL() {
+    const groupCount = document.getElementById('groupCount').value;
+    const groupSize = document.getElementById('groupSize').value;
+    const cells = document.querySelectorAll('.cell');
+
+    let raw = groupCount + groupSize;
+    cells.forEach(cell => {
+      const color = COLORS[parseInt(cell.dataset.colorIndex)];
+      let char = SYMBOLS[color];
+      raw += char === ' ' ? 'X' : char;
+    });
+
+    const finalURL = `https://ssambender.github.io/gerrymandle?level=${raw}`;
+
+    navigator.clipboard.writeText(finalURL)
+            .then(() => showCopyMessage("Level URL successfully copied"))
+            .catch(err => alert("Failed to copy URL: " + err));
+  }
+
+  function showCopyMessage(text) {
+    const msg = document.getElementById('copyMessage');
+    msg.textContent = text;
+
+    if (copyMessageTimeout) {
+      clearTimeout(copyMessageTimeout);
+    }
+
+    copyMessageTimeout = setTimeout(() => {
+      msg.textContent = '';
+      copyMessageTimeout = null;
+    }, 1000);
+  }
+
+  function goToURL() {
+    const groupCount = document.getElementById('groupCount').value;
+    const groupSize = document.getElementById('groupSize').value;
+    const cells = document.querySelectorAll('.cell');
+
+    let raw = groupCount + groupSize;
+    cells.forEach(cell => {
+      const color = COLORS[parseInt(cell.dataset.colorIndex)];
+      let char = SYMBOLS[color];
+      raw += char === ' ' ? 'X' : char;
+    });
+
+    const finalURL = `https://ssambender.github.io/gerrymandle?level=${raw}`;
+    window.open(finalURL, '_blank');
   }
 
   createGrid();
