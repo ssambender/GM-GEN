@@ -138,17 +138,22 @@
     const groupCount = document.getElementById('groupCount').value;
     const groupSize = document.getElementById('groupSize').value;
     const cells = document.querySelectorAll('.cell');
-    const output = [`"${groupCount}"`, `"${groupSize}"`];
+
+    let outputLines = [`LVL00: ["${groupCount}", "${groupSize}",`];
+
     let rowArray = [];
     cells.forEach((cell, index) => {
       const mapped = SYMBOLS[COLORS[parseInt(cell.dataset.colorIndex)]];
       rowArray.push(`"${mapped}"`);
       if ((index + 1) % cols === 0) {
-        output.push('    ' + rowArray.join(', '));
+        outputLines.push('    ' + rowArray.join(', '));
         rowArray = [];
       }
     });
-    document.getElementById('output').value = `LVL01: [${output.join(',\n    ')}\n],`;
+
+    outputLines.push('],');
+
+    document.getElementById('output').value = outputLines.join('\n');
   }
 
   function updateCounter() {
@@ -200,7 +205,8 @@
     const baseSeed = document.getElementById('seedInput').value.trim();
     if (!baseSeed) return alert('Enter a seed.');
 
-    const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5], [5,5], [5,3], [5,3], [5,3], [5,4] ];
+    //const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5], [5,5], [5,3], [5,3], [5,3], [5,4] ];
+    const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5], [5,3], [5,4] ];
 
     let attempt = 0;
     let finalSeed = "";
@@ -297,14 +303,28 @@
     }
 
     let redWins = 0, blueWins = 0, redTiles = 0, blueTiles = 0;
+
     for (const dist of districts) {
-      const votes = [];
       let r = 0, b = 0;
+      const votes = [];
+
       for (let i = 0; i < dist.path.length; i++) {
-        let vote = i === 0 ? 'R' : i === 1 ? 'B' : (rand() < 0.45 ? 'R' : 'B');
+        const vote = rand() < 0.48 ? 'R' : 'B';
         vote === 'R' ? r++ : b++;
         votes.push(vote);
       }
+
+      // Force red win if needed
+      if (r <= b) {
+        for (let i = 0; i < votes.length; i++) {
+          if (votes[i] === 'B') {
+            votes[i] = 'R';
+            r++; b--;
+            break;
+          }
+        }
+      }
+
       dist.votes = votes;
       redTiles += r;
       blueTiles += b;
