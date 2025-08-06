@@ -140,7 +140,7 @@
   </label>
 </div>
 <div class="seed-input">
-  <label>Seed: <input type="text" id="seedInput" value="080525" /></label>
+  <label>Seed: <input type="text" id="seedInput" value="080525" placeholder="[none]" /></label>
   <!--                                        starting seed value  -->
   <button onclick="generateFromSeed()">Generate from Seed</button>
 </div>
@@ -163,6 +163,13 @@
   const SYMBOLS = {'white': ' ', '#e05353': 'R', '#5988d1': 'B', '#dadada': 'O'};
   const rows = 8, cols = 6;
   let copyMessageTimeout = null;
+
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const year = String(today.getFullYear()).slice(-2);
+  const formatted = `${month}${day}${year}`;
+  document.getElementById('seedInput').value = formatted;
 
   function createGrid() {
     const grid = document.getElementById('grid');
