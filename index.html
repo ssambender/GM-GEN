@@ -138,7 +138,7 @@
     const groupCount = document.getElementById('groupCount').value;
     const groupSize = document.getElementById('groupSize').value;
     const cells = document.querySelectorAll('.cell');
-    const output = [`"${groupCount}", "${groupSize}"`];
+    const output = [`"${groupCount}"`, `"${groupSize}"`];
     let rowArray = [];
     cells.forEach((cell, index) => {
       const mapped = SYMBOLS[COLORS[parseInt(cell.dataset.colorIndex)]];
@@ -187,29 +187,61 @@
     }
   }
 
-  async function generateFromSeed() {
-    const seedText = document.getElementById('seedInput').value.trim();
-    if (!seedText) return alert('Enter a seed.');
-    const hash = await sha256(seedText);
-    const seed = parseInt(hash.slice(0, 8), 16);
-    const rand = mulberry32(seed);
-    const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5] ];
-    const [groupCount, groupSize] = combos[Math.floor(rand() * combos.length)];
-    document.getElementById('groupCount').value = groupCount;
-    document.getElementById('groupSize').value = groupSize;
-    const level = generateWinnableLevel(groupCount, groupSize, rand);
-    const cells = document.querySelectorAll('.cell');
-    for (let i = 0; i < level.length - 2; i++) {
-      const char = level[i + 2];
-      let colorIndex = 0;
-      if (char === 'R') colorIndex = 1;
-      else if (char === 'B') colorIndex = 2;
-      else if (char === 'O') colorIndex = 3;
-      const cell = cells[i];
-      cell.dataset.colorIndex = colorIndex;
-      cell.style.backgroundColor = COLORS[colorIndex];
+  function numberToSuffix(n) {
+    let s = '';
+    while (n >= 0) {
+      s = String.fromCharCode((n % 26) + 97) + s;
+      n = Math.floor(n / 26) - 1;
     }
-    updateCounter();
+    return s;
+  }
+
+  async function generateFromSeed() {
+    const baseSeed = document.getElementById('seedInput').value.trim();
+    if (!baseSeed) return alert('Enter a seed.');
+
+    const combos = [ [5,6], [6,5], [7,3], [4,7], [3,8], [6,4], [5,5], [5,5], [5,3], [5,3], [5,3], [5,4] ];
+
+    let attempt = 0;
+    let finalSeed = "";
+
+    while (true) {
+      const suffix = attempt === 0 ? '' : numberToSuffix(attempt - 1);
+      const fullSeed = baseSeed + suffix;
+
+      const hash = await sha256(fullSeed);
+      const seed = parseInt(hash.slice(0, 8), 16);
+      const rand = mulberry32(seed);
+      const comboIndex = parseInt(hash.slice(8, 10), 16) % combos.length;
+      const [groupCount, groupSize] = combos[comboIndex];
+
+      const level = generateWinnableLevel(groupCount, groupSize, rand, 0);
+      if (level) {
+        finalSeed = fullSeed;
+        // if success populate ui
+        document.getElementById('groupCount').value = groupCount;
+        document.getElementById('groupSize').value = groupSize;
+
+        const cells = document.querySelectorAll('.cell');
+        for (let i = 0; i < level.length - 2; i++) {
+          const char = level[i + 2];
+          let colorIndex = 0;
+          if (char === 'R') colorIndex = 1;
+          else if (char === 'B') colorIndex = 2;
+          else if (char === 'O') colorIndex = 3;
+          const cell = cells[i];
+          cell.dataset.colorIndex = colorIndex;
+          cell.style.backgroundColor = COLORS[colorIndex];
+        }
+
+        // Show the actual seed used
+        document.getElementById('seedInput').value = finalSeed;
+        updateCounter();
+        return;
+      }
+
+      attempt++;
+    }
   }
 
   function generateWinnableLevel(districtCount, voteCount, rand) {
@@ -261,7 +293,7 @@
     }
 
     for (let i = 0; i < districtCount; i++) {
-      if (!placeDistrict()) return generateWinnableLevel(districtCount, voteCount, rand);
+      if (!placeDistrict()) return null; // return null on failure
     }
 
     let redWins = 0, blueWins = 0, redTiles = 0, blueTiles = 0;
@@ -280,7 +312,8 @@
       else if (b > r) blueWins++;
     }
 
-    if (redWins <= blueWins || redTiles >= blueTiles) return generateWinnableLevel(districtCount, voteCount, rand);
+    //return null if not a winnable layout
+    if (redWins <= blueWins || redTiles >= blueTiles) return null;
 
     for (const dist of districts) {
       dist.path.forEach(([r, c], i) => grid[r][c] = dist.votes[i]);
