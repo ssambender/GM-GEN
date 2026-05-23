@@ -1,7 +1,7 @@
 <br>
 
 <p align="center">
- <img src="https://raw.githubusercontent.com/ssambender/GM-GEN/refs/heads/main/G-Edit-Logo.png" alt="GM-GEN Logo" height="165">
+ <img src="G-Edit-Logo.png" alt="GM-GEN Logo" height="165">
 </p>
 
 <h3 align="center">GM-GEN | Gerrymandle Map Editor</h3>
